@@ -1,6 +1,7 @@
 function processFolder() {
   var folder = DriveApp.getFolderById("ADD_FOLDER_ID_HERE") //Add the folder containing the files you'd like to process
   var files = folder.getFilesByType(MimeType.PLAIN_TEXT)
+  if(!files.hasNext()){return} //If there are no txt files, end executions
   do {
     let file = files.next()
     let parsed = parseText(file.getBlob())
