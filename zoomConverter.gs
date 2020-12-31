@@ -1,12 +1,20 @@
 function processFolder() {
-  var folder = DriveApp.getFolderById("ADD_FOLDER_ID_HERE") //Add the folder containing the files you'd like to process
+  var folder = DriveApp.getFolderById("1c76ez6iFNKXFNVyl1XM7iRYAwt8RBTEZ")
   var files = folder.getFilesByType(MimeType.PLAIN_TEXT)
   if(!files.hasNext()){return} //If there are no txt files, end executions
   do {
     let file = files.next()
+    if(file.getName().includes("Converted")){
+      return
+    }
     let parsed = parseText(file.getBlob())
     createAndPopulateGoogleDoc(folder,file.getName(),parsed)
-    file.setTrashed(true)
+    try{
+      Drive.Files.remove(file.getId());
+    }catch(error){
+      file.setName(file.getName()+"(Converted)")
+    }
+    //file.setTrashed(true)
   } while (files.hasNext())
 }
 
@@ -26,7 +34,7 @@ function parseText(txtFile) {
         message:row.groups.message
       })
     }else{
-      chatArr[chatArr.length-1].message += "\n"+row //If the row doesn't have a timestamp (aka regex didn't pick anything up,) just append the message on the row
+      chatArr[chatArr.length-1].message += "\n"+row
     }
   })
   return chatArr
@@ -35,7 +43,7 @@ function parseText(txtFile) {
 function createAndPopulateGoogleDoc(folder, filename, data){
   const regex = RegExp(/(?:http|ftp|https):\/\/(?:[\w_-]+(?:(?:\.[\w_-]+)+))(?:[\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])?/)
   var styles = getStyles()
-  filename = formatFilename(filename)
+  filename = formatFilename()
   var colors = getColorsByUser(data)
   var doc = DocumentApp.create(filename)
   var body = doc.getBody()
@@ -61,7 +69,7 @@ function createAndPopulateGoogleDoc(folder, filename, data){
   file.moveTo(folder)
 }
 
-function getColorsByUser(data){ //TODO: ensure all hex codes are valid and give each person their own color for the chat
+function getColorsByUser(data){ //TODO: ensure all hex codes are valid
   var listOfNames = []
   data.forEach(e=>{
     if(listOfNames.includes(e.name)){
@@ -97,9 +105,7 @@ function getStyles(){
   return {name:name, message:message, title:title, timestamp:timestamp}
 }
 
-function formatFilename(name){
-  const regex = RegExp(/(?<year>\d{4})\s(?<month>\d{1,2})\s(?<day>\d{1,2})/)
-  var updated = name.match(regex).groups
-  updated = [updated.month, updated.day, updated.year]
-  return "Meeting Chat "+updated.join("/")
+function formatFilename(){
+  var date = Utilities.formatDate(new Date(),Session.getTimeZone(),"M/d/yyyy")
+  return "Meeting Chat "+date
 }
